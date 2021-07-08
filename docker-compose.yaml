@@ -1,0 +1,50 @@
+version: "3"
+services:
+  paste-application:
+    build: paste_service
+    deploy:
+      restart_policy:
+        condition: on-failure
+    ports:
+      - 8080:8080
+    volumes:
+      - ./paste_service/src:/app
+      -  $HOME/.aws/credentials:/root/.aws/credentials:ro
+    networks:
+      - paste-network
+    depends_on:
+      - caching
+      - mq
+
+  caching:
+    image: redis:latest
+    expose:
+      - 6379
+    networks:
+      - paste-network
+
+  mq:
+    image: rabbitmq:3-management
+    hostname: my-rabbit
+    expose:
+      - 5672
+      - 15672
+    networks:
+      - paste-network
+      - key-gen-network
+
+  key-generator:
+    build: ./key_gen_service
+    deploy:
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - $HOME/.aws/credentials:/root/.aws/credentials:ro
+    networks:
+      - key-gen-network
+    depends_on:
+      - mq
+
+networks:
+  paste-network:
+  key-gen-network:
