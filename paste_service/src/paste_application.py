@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from paste_controller import UploadController
+from paste_controller import UploadController, RetrieveController
 import boto3
 import logging
 import config
@@ -31,8 +31,16 @@ def paste():
 
 @app.route('/retrieve/<uid>', methods=['POST'])
 def copy(uid=''):
-    password = request.args.get('ps', "", type=str)
-    return '123'
+    assert uid != '', 'invalid uid'
+    payload = request.get_json()
+    data = RetrieveController.handle_request(uid, payload['password'],
+                                             redis_client=redis_client, db_client=db_client)
+    if data is None:
+        status = 404
+        data = 'The uri is either expired or not valid'
+    else:
+        status = 200
+    return {'statusCode': status, 'body': data}
 
 
 if __name__ == '__main__':

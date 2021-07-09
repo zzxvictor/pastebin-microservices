@@ -32,6 +32,7 @@ class Encryption:
 
     @classmethod
     def decrypt(cls, key: str, content: bytes) -> str:
+        print(content, flush=True)
         if key == '':
             logging.log(level=config.LOGGING_LEVEL, msg="no encryption")
             return content.decode()
@@ -44,11 +45,20 @@ class Encryption:
 class Dynamo:
     @classmethod
     def get_item(cls, client, pk: str) -> Any:
-        return None
+        logging.log(config.LOGGING_LEVEL, 'dynamo get item {}'.format(pk))
+        try:
+            res = client.get_item(
+                TableName=config.TABLE_NAME,
+                Key={'uid': {'S': pk}}
+            )
+            return res['Item']
+        except Exception as e:
+            logging.log(config.LOGGING_LEVEL, 'dynamo get item error - {}'.format(e))
+            return None
 
     @classmethod
     def put_item(cls, client, item: dict) -> False:
-        logging.log(config.LOGGING_LEVEL, item)
+        logging.log(config.LOGGING_LEVEL, 'dynamo put item {}'.format(item))
         try:
             res = client.put_item(
                 TableName=config.TABLE_NAME,
@@ -63,13 +73,14 @@ class Dynamo:
 class Redis:
     @classmethod
     def get_item(cls, client: Any, pk: str) -> Any:
-        return None
+        logging.log(config.LOGGING_LEVEL, 'Redis - get item: {}'.format(pk))
+        data = client.hgetall(pk)
+        return data
 
     @classmethod
     def put_item(cls, client: Any, item: dict) -> Any:
-        logging.log(config.LOGGING_LEVEL, 'Redis: {}'.format(item))
+        logging.log(config.LOGGING_LEVEL, 'Redis put item: {}'.format(item))
         key = item['uid']
-        content = item['content']
         expire_date = item['expire_on']
         try:
             client.hmset(key, item)

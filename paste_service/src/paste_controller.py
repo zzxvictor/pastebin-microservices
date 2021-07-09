@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Union
 from utilities import Encryption, Dynamo, MessageQue, Redis
 import datetime
 import config
@@ -45,3 +45,25 @@ class UploadController:
         return uid
 
 
+class RetrieveController:
+    @classmethod
+    def handle_request(cls, key: str,
+                       password: str,
+                       redis_client: Any,
+                       db_client: Any) -> Union[str, None]:
+        data = Redis.get_item(redis_client, key)
+        if len(data) != 0 and False:
+            logging.log(config.LOGGING_LEVEL, 'data in cache {}'.format(data))
+            content = {'uid': data[b'uid'], 'expire_on': data[b'expire_on'].decode()}
+        else:
+            data = Dynamo.get_item(db_client, key)
+            if data is not None:
+                logging.log(config.LOGGING_LEVEL, 'data in db {}'.format(data))
+                content = {key: list(val.values())[0] for key, val in data.items()}
+            else:
+                return None
+
+        if datetime.datetime.utcnow().timestamp() < float(content['expire_on']):
+            return Encryption.decrypt(password, content['content'])
+        else:
+            return None
