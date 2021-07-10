@@ -14,3 +14,4 @@ Werkzeug==2.0.1
 redis
 pika
 cryptography
+Flask-Limiter

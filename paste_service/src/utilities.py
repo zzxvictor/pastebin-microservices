@@ -1,15 +1,12 @@
 import json
-
-import boto3
 import base64
-import pika
-import redis
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import logging
 import config
 from typing import Any, Union
+import random
 
 
 class Encryption:
@@ -32,14 +29,23 @@ class Encryption:
 
     @classmethod
     def decrypt(cls, key: str, content: bytes) -> str:
-        print(content, flush=True)
         if key == '':
             logging.log(level=config.LOGGING_LEVEL, msg="no encryption")
             return content.decode()
         encryption_key = cls._get_encryption_key(key)
-        f = Fernet(encryption_key)
-        logging.log(level=config.LOGGING_LEVEL, msg="msg encrypted")
-        return f.decrypt(content).decode()
+        try:
+            f = Fernet(encryption_key)
+            logging.log(level=config.LOGGING_LEVEL, msg="msg encrypted")
+            data = f.decrypt(content).decode()
+        except InvalidToken:
+            data = cls._gibberish(key).decode()
+        return data
+
+    @classmethod
+    def _gibberish(cls, key: str) -> bytes:
+        message = str(hash(key))
+        password = ''.join([str(random.randint(0, 9)) for _ in range(10)])
+        return cls.encrypt(password, message)
 
 
 class Dynamo:
@@ -51,7 +57,7 @@ class Dynamo:
                 TableName=config.TABLE_NAME,
                 Key={'uid': {'S': pk}}
             )
-            return res['Item']
+            return res.get('Item', None)
         except Exception as e:
             logging.log(config.LOGGING_LEVEL, 'dynamo get item error - {}'.format(e))
             return None
@@ -103,3 +109,4 @@ class MessageQue:
             return msg
         else:
             return None
+

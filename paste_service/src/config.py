@@ -5,3 +5,4 @@ LIFE_SPAN = 12                          # life span of a paste
 QUEUE_RETRY = 3                         # get message retry
 TABLE_NAME = 'paste-bin-paste-service-db'
 MAX_PASTE_SIZE = 1024 * 10              # 10kb
+KEY_SIZE = 5                            # minimum valid key length
