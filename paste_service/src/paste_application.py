@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from paste_controller import UploadController, RetrieveController, UriNotFoundError, InvalidUriError
+from paste_controller import UploadController, RetrieveController, UriNotFoundError, InvalidUriError, ContentTooBigError
 import boto3
 import logging
 import config
@@ -48,13 +48,17 @@ def uri_not_valid_handler(error):
     return error.format_msg(), 404
 
 
+@app.errorhandler(ContentTooBigError)
+def content_too_big_handler(error):
+    return error.format_msg(), 413
+
+
 @app.route('/upload', methods=['POST'])
 @limiter.limit('2/second', override_defaults=True)
 def paste():
     payload = request.get_json()
     encryption_key = payload['encryption_key']
     user_data = payload['content']
-    assert len(user_data) < config.MAX_PASTE_SIZE, 'maximum data size exceeded'
     uri = UploadController.handle_request(encryption_key,
                                           user_data,
                                           db_client=db_client,

@@ -28,6 +28,17 @@ class InvalidUriError(Exception):
         return "Issue with resource: {}, error message: {}".format(self.uid, self.message)
 
 
+class ContentTooBigError(Exception):
+    """Raise when paste content is too big"""
+    def __init__(self, uid, message="content too big"):
+        self.uid = uid
+        self.message = message
+        super().__init__(self.message)
+
+    def format_msg(self):
+        return "Issue with paste content, error message: {}".format(self.uid, self.message)
+
+
 class UploadController:
     @classmethod
     def handle_request(cls, key: str,
@@ -35,6 +46,9 @@ class UploadController:
                        db_client: Any,
                        redis_client: Any,
                        mq_client: Any) -> str:
+        if len(content) < config.MAX_PASTE_SIZE:
+            raise ContentTooBigError('size got: {} > max size {}'.format(len(content), config.MAX_PASTE_SIZE))
+
         data_to_save = Encryption.encrypt(key, content)
         life_span = datetime.timedelta(days=config.LIFE_SPAN)
         valid_until = (datetime.datetime.utcnow() + life_span).timestamp()

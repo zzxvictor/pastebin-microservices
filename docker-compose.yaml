@@ -5,8 +5,11 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
-    ports:
-      - 8080:8080
+      replicas: 2
+    expose:
+      - 8080
+#    ports:
+#      - 8080:8080
     volumes:
       - ./paste_service/src:/app
       -  $HOME/.aws/credentials:/root/.aws/credentials:ro
@@ -47,6 +50,15 @@ services:
       - key-gen-network
     depends_on:
       - mq
+
+  load-balancer:
+    build: ./load_balancer
+    ports:
+      - 80:80
+    networks:
+      - paste-network
+    depends_on:
+      - paste-application
 
 networks:
   paste-network:
