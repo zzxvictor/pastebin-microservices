@@ -15,3 +15,6 @@ redis
 pika
 cryptography
 Flask-Limiter
+cython
+py_zipkin
+requests

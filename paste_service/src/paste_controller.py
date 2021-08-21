@@ -46,7 +46,7 @@ class UploadController:
                        db_client: Any,
                        redis_client: Any,
                        mq_client: Any) -> str:
-        if len(content) < config.MAX_PASTE_SIZE:
+        if len(content) >= config.MAX_PASTE_SIZE:
             raise ContentTooBigError('size got: {} > max size {}'.format(len(content), config.MAX_PASTE_SIZE))
 
         data_to_save = Encryption.encrypt(key, content)

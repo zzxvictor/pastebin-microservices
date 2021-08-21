@@ -7,7 +7,10 @@ import redis
 import pika
 from flask_limiter import Limiter, RateLimitExceeded
 from flask_limiter.util import get_remote_address
-
+from py_zipkin.zipkin import zipkin_span, create_http_headers_for_new_span, ZipkinAttrs, Kind, zipkin_client_span
+from py_zipkin.request_helpers import create_http_headers
+from py_zipkin.encoding import Encoding
+import requests
 
 logging.basicConfig(level=config.LOGGING_LEVEL)
 app = Flask(__name__)
@@ -53,17 +56,42 @@ def content_too_big_handler(error):
     return error.format_msg(), 413
 
 
+@app.route('/debug', methods=['GET'])
+def hello():
+    """For debugging"""
+    return "server is running"
+
+
+def default_handler(encoded_span):
+    body = encoded_span
+    return requests.post(
+        "http://zipkin:9411/api/v2/spans",
+        data=body,
+        headers={'Content-Type': 'application/json'},
+    )
+
+
 @app.route('/upload', methods=['POST'])
 @limiter.limit('2/second', override_defaults=True)
 def paste():
-    payload = request.get_json()
-    encryption_key = payload['encryption_key']
-    user_data = payload['content']
-    uri = UploadController.handle_request(encryption_key,
-                                          user_data,
-                                          db_client=db_client,
-                                          redis_client=redis_client,
-                                          mq_client=mq_client)
+    with zipkin_span(
+            service_name='paste-bin',
+            span_name='upload',
+            port=8080,
+            transport_handler=default_handler,
+            sample_rate=100,  # Value between 0.0 and 100.0,
+            encoding=Encoding.V2_JSON
+    ):
+
+        payload = request.get_json()
+
+        encryption_key = payload['encryption_key']
+        user_data = payload['content']
+        uri = UploadController.handle_request(encryption_key,
+                                              user_data,
+                                              db_client=db_client,
+                                              redis_client=redis_client,
+                                              mq_client=mq_client)
     return {'statusCode': 200, 'body': uri}
 
 

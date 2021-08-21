@@ -19,6 +19,7 @@ services:
       - caching
       - mq
 
+
   caching:
     build: cache
     deploy:
@@ -59,6 +60,15 @@ services:
       - paste-network
     depends_on:
       - paste-application
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - paste-network
+
 
 networks:
   paste-network:
